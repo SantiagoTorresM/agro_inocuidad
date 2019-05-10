@@ -1,0 +1,872 @@
+---
+title: "Analisis Inocuidad-Productos Agropecuarios"
+author: "Santiago Torres"
+date: "29 de abril de 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Efecto mínimo detectable (EMD)
+
+Para una aleatorización a nivel de aglomerados, se puede emplear el siguiente cálculo.
+
+$$MDE=(t_{1-\kappa}+t_\alpha) \sqrt{\frac{1}{Jp(1-p)}} \sqrt{\rho + \frac{(1-\rho)\sigma^2}{n}}$$
+
+Reordenando y despejando $J$ tenemos:
+
+$$J=(\frac{t_{1-\kappa}+t_\alpha}{MDE})^2 \frac{1}{p(1-p)} ( \rho + \frac{(1-\rho)\sigma^2}{n} )$$
+
+Se estandariza la siguiente notación: Para facilitar el análisis de los parámetros en el modelo y obtener un cálculo de poder inmediato, redefinimos la variabilidad en términos del coeficiente de correlación intraclase $\rho$; este se expresaría como un ratio de la variabilidad entre clusters respecto a la variabilidad total, tal como sigue:
+
+$$\rho=\frac{\tau}{\tau+\sigma^2}$$
+Dado que $\tau+\sigma^2$ es la variabilidad total, la podemos restringir a 1. De ese modo, $\rho=\tau$, lo que implica además que $1-\rho=\sigma^2$.
+
+
+
+Reemplazando los datos como supuestos tenemos:
+```{r}
+t_mk=0.84
+t_alpha=1.96
+MDE=0.2
+p=0.5
+rho=0.15
+sigma2=1-rho
+n=12  
+
+J=((t_mk+t_alpha)/MDE)^2*(1/(p*(1-p)))*(rho+(((1-p)*sigma2)/n))
+J
+```
+
+# Procesamiento de Cenagro 2012
+
+## Tratamiento de bases de datos
+```{r}
+#lima
+setwd("C:/Users/sant_/Documents/Consultorias/2019/nico/cenagro")
+library(dplyr)
+library(foreign)
+
+##Bases generales
+lima_rec02 <- read.dbf("lima/351-Modulo231/03_IVCENAGRO_REC02.dbf") 
+lima_rec04a <- read.dbf("lima/351-Modulo236/08_IVCENAGRO_REC04A.dbf") 
+
+## Pollos
+lima_pollos <- filter(lima_rec04a, P067_01==761)
+
+## Ganado lechero (solo vacas)
+lima_vacas <- filter(lima_rec04a, P067_01==674)
+
+## Papas
+lima_papas <- filter(lima_rec02, (
+  P024_03==2610 | P024_03==2611 | P024_03==2612 | P024_03==2613 | P024_03==2614 | 
+    P024_03==2615 | P024_03==5049 | P024_03==5062 | P024_03==5074 | P024_03==5075 | 
+    P024_03==5076 | P024_03==5077 | P024_03==5078 | P024_03==5079 | P024_03==5080 | 
+    P024_03==5081 | P024_03==5090 | P024_03==5091 | P024_03==5113 | P024_03==5122 | 
+    P024_03==5123 | P024_03==5124 | P024_03==5125 | P024_03==5126 | P024_03==5130 | 
+    P024_03==5135 | P024_03==5136 | P024_03==5137 | P024_03==5142 | P024_03==5145 | 
+    P024_03==5146 | P024_03==5155 | P024_03==5157 | P024_03==5159 | P024_03==5160 | 
+    P024_03==5170 | P024_03==5183 | P024_03==5184 | P024_03==5185 | P024_03==5213 | 
+    P024_03==5214 | P024_03==5231 | P024_03==5304 | P024_03==5344 | P024_03==5345 | 
+    P024_03==5346 | P024_03==5347 | P024_03==5395 | P024_03==5399 | P024_03==5406 | 
+    P024_03==5412 | P024_03==5436 | P024_03==5440 | P024_03==5441 | P024_03==5442 | 
+    P024_03==5458 | P024_03==5496 | P024_03==5512 | P024_03==5554 | P024_03==5586 | 
+    P024_03==5651 | P024_03==5658 | P024_03==5689 | P024_03==5733 | P024_03==5819 | 
+    P024_03==5942 | P024_03==5952 | P024_03==6099 | P024_03==6147 | P024_03==6148 | 
+    P024_03==6149 | P024_03==6482 | P024_03==6811 | P024_03==6898 | P024_03==6940 | 
+    P024_03==7125 | P024_03==7126 | P024_03==7127 | P024_03==7219 | P024_03==8000 | 
+    P024_03==8001 | P024_03==8002 | P024_03==8017 | P024_03==8074 | P024_03==8086 | 
+    P024_03==8163 | P024_03==8194 | P024_03==8207 | P024_03==8217 | P024_03==8218 | 
+    P024_03==8219 | P024_03==8233 | P024_03==8253 | P024_03==8275 | P024_03==8276 | 
+    P024_03==8286 | P024_03==8287 | P024_03==8320 | P024_03==8404 | P024_03==8408 ))
+
+## Naranjas y mandarinas
+lima_narmand <- filter(lima_rec02, (
+  P024_03==1146 | P024_03==5533 | P024_03==5568 | P024_03==5593 | P024_03==5611 | 
+  P024_03==5641 | P024_03==5751 | P024_03==5754 | P024_03==5762 | P024_03==5765 | 
+  P024_03==5810 | P024_03==5929 | P024_03==5931 | P024_03==6004 | P024_03==6045 | 
+  P024_03==6066 | P024_03==6087 | P024_03==6088 | P024_03==6089 | P024_03==6096 | 
+  P024_03==6097 | P024_03==6098 | P024_03==6099 | P024_03==6100 | P024_03==6101 | 
+  P024_03==6102 | P024_03==6103 | P024_03==6121 | P024_03==6190 | P024_03==6216 | 
+  P024_03==6312 | P024_03==6313 | P024_03==6378 | P024_03==6405 | P024_03==6419 | 
+  P024_03==6420 | P024_03==6421 | P024_03==6422 | P024_03==6423 | P024_03==6424 | 
+  P024_03==6470 | P024_03==6517 | P024_03==6539 | P024_03==6660 | P024_03==6991 | 
+  P024_03==6992 | P024_03==7192 | P024_03==6650 | P024_03==6969 | P024_03==8384 ))
+
+```
+
+
+```{r}
+#Ancash
+setwd("C:/Users/sant_/Documents/Consultorias/2019/nico/cenagro")
+library(dplyr)
+library(foreign)
+
+##Bases generales
+ancash_rec02 <- read.dbf("ancash/338-Modulo231/03_IVCENAGRO_REC02.dbf") 
+ancash_rec04a <- read.dbf("ancash/338-Modulo236/08_IVCENAGRO_REC04A.dbf") 
+
+## Pollos
+ancash_pollos <- filter(ancash_rec04a, P067_01==761)
+
+## Ganado lechero (solo vacas)
+ancash_vacas <- filter(ancash_rec04a, P067_01==674)
+
+## Papas
+ancash_papas <- filter(ancash_rec02, (
+  P024_03==2610 | P024_03==2611 | P024_03==2612 | P024_03==2613 | P024_03==2614 | 
+    P024_03==2615 | P024_03==5049 | P024_03==5062 | P024_03==5074 | P024_03==5075 | 
+    P024_03==5076 | P024_03==5077 | P024_03==5078 | P024_03==5079 | P024_03==5080 | 
+    P024_03==5081 | P024_03==5090 | P024_03==5091 | P024_03==5113 | P024_03==5122 | 
+    P024_03==5123 | P024_03==5124 | P024_03==5125 | P024_03==5126 | P024_03==5130 | 
+    P024_03==5135 | P024_03==5136 | P024_03==5137 | P024_03==5142 | P024_03==5145 | 
+    P024_03==5146 | P024_03==5155 | P024_03==5157 | P024_03==5159 | P024_03==5160 | 
+    P024_03==5170 | P024_03==5183 | P024_03==5184 | P024_03==5185 | P024_03==5213 | 
+    P024_03==5214 | P024_03==5231 | P024_03==5304 | P024_03==5344 | P024_03==5345 | 
+    P024_03==5346 | P024_03==5347 | P024_03==5395 | P024_03==5399 | P024_03==5406 | 
+    P024_03==5412 | P024_03==5436 | P024_03==5440 | P024_03==5441 | P024_03==5442 | 
+    P024_03==5458 | P024_03==5496 | P024_03==5512 | P024_03==5554 | P024_03==5586 | 
+    P024_03==5651 | P024_03==5658 | P024_03==5689 | P024_03==5733 | P024_03==5819 | 
+    P024_03==5942 | P024_03==5952 | P024_03==6099 | P024_03==6147 | P024_03==6148 | 
+    P024_03==6149 | P024_03==6482 | P024_03==6811 | P024_03==6898 | P024_03==6940 | 
+    P024_03==7125 | P024_03==7126 | P024_03==7127 | P024_03==7219 | P024_03==8000 | 
+    P024_03==8001 | P024_03==8002 | P024_03==8017 | P024_03==8074 | P024_03==8086 | 
+    P024_03==8163 | P024_03==8194 | P024_03==8207 | P024_03==8217 | P024_03==8218 | 
+    P024_03==8219 | P024_03==8233 | P024_03==8253 | P024_03==8275 | P024_03==8276 | 
+    P024_03==8286 | P024_03==8287 | P024_03==8320 | P024_03==8404 | P024_03==8408 ))
+
+## Naranjas y mandarinas
+ancash_narmand <- filter(ancash_rec02, (
+  P024_03==1146 | P024_03==5533 | P024_03==5568 | P024_03==5593 | P024_03==5611 | 
+  P024_03==5641 | P024_03==5751 | P024_03==5754 | P024_03==5762 | P024_03==5765 | 
+  P024_03==5810 | P024_03==5929 | P024_03==5931 | P024_03==6004 | P024_03==6045 | 
+  P024_03==6066 | P024_03==6087 | P024_03==6088 | P024_03==6089 | P024_03==6096 | 
+  P024_03==6097 | P024_03==6098 | P024_03==6099 | P024_03==6100 | P024_03==6101 | 
+  P024_03==6102 | P024_03==6103 | P024_03==6121 | P024_03==6190 | P024_03==6216 | 
+  P024_03==6312 | P024_03==6313 | P024_03==6378 | P024_03==6405 | P024_03==6419 | 
+  P024_03==6420 | P024_03==6421 | P024_03==6422 | P024_03==6423 | P024_03==6424 | 
+  P024_03==6470 | P024_03==6517 | P024_03==6539 | P024_03==6660 | P024_03==6991 | 
+  P024_03==6992 | P024_03==7192 | P024_03==6650 | P024_03==6969 | P024_03==8384 ))
+
+```
+
+
+```{r}
+#ica
+setwd("C:/Users/sant_/Documents/Consultorias/2019/nico/cenagro")
+library(dplyr)
+library(foreign)
+
+##Bases generales
+ica_rec02 <- read.dbf("ica/347-Modulo231/03_IVCENAGRO_REC02.dbf") 
+ica_rec04a <- read.dbf("ica/347-Modulo236/08_IVCENAGRO_REC04A.dbf") 
+
+## Pollos
+ica_pollos <- filter(ica_rec04a, P067_01==761)
+
+## Ganado lechero (solo vacas)
+ica_vacas <- filter(ica_rec04a, P067_01==674)
+
+## Papas
+ica_papas <- filter(ica_rec02, (
+  P024_03==2610 | P024_03==2611 | P024_03==2612 | P024_03==2613 | P024_03==2614 | 
+    P024_03==2615 | P024_03==5049 | P024_03==5062 | P024_03==5074 | P024_03==5075 | 
+    P024_03==5076 | P024_03==5077 | P024_03==5078 | P024_03==5079 | P024_03==5080 | 
+    P024_03==5081 | P024_03==5090 | P024_03==5091 | P024_03==5113 | P024_03==5122 | 
+    P024_03==5123 | P024_03==5124 | P024_03==5125 | P024_03==5126 | P024_03==5130 | 
+    P024_03==5135 | P024_03==5136 | P024_03==5137 | P024_03==5142 | P024_03==5145 | 
+    P024_03==5146 | P024_03==5155 | P024_03==5157 | P024_03==5159 | P024_03==5160 | 
+    P024_03==5170 | P024_03==5183 | P024_03==5184 | P024_03==5185 | P024_03==5213 | 
+    P024_03==5214 | P024_03==5231 | P024_03==5304 | P024_03==5344 | P024_03==5345 | 
+    P024_03==5346 | P024_03==5347 | P024_03==5395 | P024_03==5399 | P024_03==5406 | 
+    P024_03==5412 | P024_03==5436 | P024_03==5440 | P024_03==5441 | P024_03==5442 | 
+    P024_03==5458 | P024_03==5496 | P024_03==5512 | P024_03==5554 | P024_03==5586 | 
+    P024_03==5651 | P024_03==5658 | P024_03==5689 | P024_03==5733 | P024_03==5819 | 
+    P024_03==5942 | P024_03==5952 | P024_03==6099 | P024_03==6147 | P024_03==6148 | 
+    P024_03==6149 | P024_03==6482 | P024_03==6811 | P024_03==6898 | P024_03==6940 | 
+    P024_03==7125 | P024_03==7126 | P024_03==7127 | P024_03==7219 | P024_03==8000 | 
+    P024_03==8001 | P024_03==8002 | P024_03==8017 | P024_03==8074 | P024_03==8086 | 
+    P024_03==8163 | P024_03==8194 | P024_03==8207 | P024_03==8217 | P024_03==8218 | 
+    P024_03==8219 | P024_03==8233 | P024_03==8253 | P024_03==8275 | P024_03==8276 | 
+    P024_03==8286 | P024_03==8287 | P024_03==8320 | P024_03==8404 | P024_03==8408 ))
+
+## Naranjas y mandarinas
+ica_narmand <- filter(ica_rec02, (
+  P024_03==1146 | P024_03==5533 | P024_03==5568 | P024_03==5593 | P024_03==5611 | 
+  P024_03==5641 | P024_03==5751 | P024_03==5754 | P024_03==5762 | P024_03==5765 | 
+  P024_03==5810 | P024_03==5929 | P024_03==5931 | P024_03==6004 | P024_03==6045 | 
+  P024_03==6066 | P024_03==6087 | P024_03==6088 | P024_03==6089 | P024_03==6096 | 
+  P024_03==6097 | P024_03==6098 | P024_03==6099 | P024_03==6100 | P024_03==6101 | 
+  P024_03==6102 | P024_03==6103 | P024_03==6121 | P024_03==6190 | P024_03==6216 | 
+  P024_03==6312 | P024_03==6313 | P024_03==6378 | P024_03==6405 | P024_03==6419 | 
+  P024_03==6420 | P024_03==6421 | P024_03==6422 | P024_03==6423 | P024_03==6424 | 
+  P024_03==6470 | P024_03==6517 | P024_03==6539 | P024_03==6660 | P024_03==6991 | 
+  P024_03==6992 | P024_03==7192 | P024_03==6650 | P024_03==6969 | P024_03==8384 ))
+```
+
+
+```{r}
+#junin
+setwd("C:/Users/sant_/Documents/Consultorias/2019/nico/cenagro")
+library(dplyr)
+library(foreign)
+
+##Bases generales
+junin_rec02 <- read.dbf("junin/348-Modulo231/03_IVCENAGRO_REC02.dbf") 
+junin_rec04a <- read.dbf("junin/348-Modulo236/08_IVCENAGRO_REC04A.dbf") 
+
+## Pollos
+junin_pollos <- filter(junin_rec04a, P067_01==761)
+
+## Ganado lechero (solo vacas)
+junin_vacas <- filter(junin_rec04a, P067_01==674)
+
+## Papas
+junin_papas <- filter(junin_rec02, (
+  P024_03==2610 | P024_03==2611 | P024_03==2612 | P024_03==2613 | P024_03==2614 | 
+    P024_03==2615 | P024_03==5049 | P024_03==5062 | P024_03==5074 | P024_03==5075 | 
+    P024_03==5076 | P024_03==5077 | P024_03==5078 | P024_03==5079 | P024_03==5080 | 
+    P024_03==5081 | P024_03==5090 | P024_03==5091 | P024_03==5113 | P024_03==5122 | 
+    P024_03==5123 | P024_03==5124 | P024_03==5125 | P024_03==5126 | P024_03==5130 | 
+    P024_03==5135 | P024_03==5136 | P024_03==5137 | P024_03==5142 | P024_03==5145 | 
+    P024_03==5146 | P024_03==5155 | P024_03==5157 | P024_03==5159 | P024_03==5160 | 
+    P024_03==5170 | P024_03==5183 | P024_03==5184 | P024_03==5185 | P024_03==5213 | 
+    P024_03==5214 | P024_03==5231 | P024_03==5304 | P024_03==5344 | P024_03==5345 | 
+    P024_03==5346 | P024_03==5347 | P024_03==5395 | P024_03==5399 | P024_03==5406 | 
+    P024_03==5412 | P024_03==5436 | P024_03==5440 | P024_03==5441 | P024_03==5442 | 
+    P024_03==5458 | P024_03==5496 | P024_03==5512 | P024_03==5554 | P024_03==5586 | 
+    P024_03==5651 | P024_03==5658 | P024_03==5689 | P024_03==5733 | P024_03==5819 | 
+    P024_03==5942 | P024_03==5952 | P024_03==6099 | P024_03==6147 | P024_03==6148 | 
+    P024_03==6149 | P024_03==6482 | P024_03==6811 | P024_03==6898 | P024_03==6940 | 
+    P024_03==7125 | P024_03==7126 | P024_03==7127 | P024_03==7219 | P024_03==8000 | 
+    P024_03==8001 | P024_03==8002 | P024_03==8017 | P024_03==8074 | P024_03==8086 | 
+    P024_03==8163 | P024_03==8194 | P024_03==8207 | P024_03==8217 | P024_03==8218 | 
+    P024_03==8219 | P024_03==8233 | P024_03==8253 | P024_03==8275 | P024_03==8276 | 
+    P024_03==8286 | P024_03==8287 | P024_03==8320 | P024_03==8404 | P024_03==8408 ))
+
+## Naranjas y mandarinas
+junin_narmand <- filter(junin_rec02, (
+  P024_03==1146 | P024_03==5533 | P024_03==5568 | P024_03==5593 | P024_03==5611 | 
+  P024_03==5641 | P024_03==5751 | P024_03==5754 | P024_03==5762 | P024_03==5765 | 
+  P024_03==5810 | P024_03==5929 | P024_03==5931 | P024_03==6004 | P024_03==6045 | 
+  P024_03==6066 | P024_03==6087 | P024_03==6088 | P024_03==6089 | P024_03==6096 | 
+  P024_03==6097 | P024_03==6098 | P024_03==6099 | P024_03==6100 | P024_03==6101 | 
+  P024_03==6102 | P024_03==6103 | P024_03==6121 | P024_03==6190 | P024_03==6216 | 
+  P024_03==6312 | P024_03==6313 | P024_03==6378 | P024_03==6405 | P024_03==6419 | 
+  P024_03==6420 | P024_03==6421 | P024_03==6422 | P024_03==6423 | P024_03==6424 | 
+  P024_03==6470 | P024_03==6517 | P024_03==6539 | P024_03==6660 | P024_03==6991 | 
+  P024_03==6992 | P024_03==7192 | P024_03==6650 | P024_03==6969 | P024_03==8384 ))
+```
+
+
+```{r}
+#cajamarca
+setwd("C:/Users/sant_/Documents/Consultorias/2019/nico/cenagro")
+library(dplyr)
+library(foreign)
+
+##Bases generales
+cajamarca_rec02 <- read.dbf("cajamarca/342-Modulo231/03_IVCENAGRO_REC02.dbf") 
+cajamarca_rec04a <- read.dbf("cajamarca/342-Modulo236/08_IVCENAGRO_REC04A.dbf") 
+
+## Pollos
+cajamarca_pollos <- filter(cajamarca_rec04a, P067_01==761)
+
+## Ganado lechero (solo vacas)
+cajamarca_vacas <- filter(cajamarca_rec04a, P067_01==674)
+
+## Papas
+cajamarca_papas <- filter(cajamarca_rec02, (
+  P024_03==2610 | P024_03==2611 | P024_03==2612 | P024_03==2613 | P024_03==2614 | 
+    P024_03==2615 | P024_03==5049 | P024_03==5062 | P024_03==5074 | P024_03==5075 | 
+    P024_03==5076 | P024_03==5077 | P024_03==5078 | P024_03==5079 | P024_03==5080 | 
+    P024_03==5081 | P024_03==5090 | P024_03==5091 | P024_03==5113 | P024_03==5122 | 
+    P024_03==5123 | P024_03==5124 | P024_03==5125 | P024_03==5126 | P024_03==5130 | 
+    P024_03==5135 | P024_03==5136 | P024_03==5137 | P024_03==5142 | P024_03==5145 | 
+    P024_03==5146 | P024_03==5155 | P024_03==5157 | P024_03==5159 | P024_03==5160 | 
+    P024_03==5170 | P024_03==5183 | P024_03==5184 | P024_03==5185 | P024_03==5213 | 
+    P024_03==5214 | P024_03==5231 | P024_03==5304 | P024_03==5344 | P024_03==5345 | 
+    P024_03==5346 | P024_03==5347 | P024_03==5395 | P024_03==5399 | P024_03==5406 | 
+    P024_03==5412 | P024_03==5436 | P024_03==5440 | P024_03==5441 | P024_03==5442 | 
+    P024_03==5458 | P024_03==5496 | P024_03==5512 | P024_03==5554 | P024_03==5586 | 
+    P024_03==5651 | P024_03==5658 | P024_03==5689 | P024_03==5733 | P024_03==5819 | 
+    P024_03==5942 | P024_03==5952 | P024_03==6099 | P024_03==6147 | P024_03==6148 | 
+    P024_03==6149 | P024_03==6482 | P024_03==6811 | P024_03==6898 | P024_03==6940 | 
+    P024_03==7125 | P024_03==7126 | P024_03==7127 | P024_03==7219 | P024_03==8000 | 
+    P024_03==8001 | P024_03==8002 | P024_03==8017 | P024_03==8074 | P024_03==8086 | 
+    P024_03==8163 | P024_03==8194 | P024_03==8207 | P024_03==8217 | P024_03==8218 | 
+    P024_03==8219 | P024_03==8233 | P024_03==8253 | P024_03==8275 | P024_03==8276 | 
+    P024_03==8286 | P024_03==8287 | P024_03==8320 | P024_03==8404 | P024_03==8408 ))
+
+## Naranjas y mandarinas
+cajamarca_narmand <- filter(cajamarca_rec02, (
+  P024_03==1146 | P024_03==5533 | P024_03==5568 | P024_03==5593 | P024_03==5611 | 
+  P024_03==5641 | P024_03==5751 | P024_03==5754 | P024_03==5762 | P024_03==5765 | 
+  P024_03==5810 | P024_03==5929 | P024_03==5931 | P024_03==6004 | P024_03==6045 | 
+  P024_03==6066 | P024_03==6087 | P024_03==6088 | P024_03==6089 | P024_03==6096 | 
+  P024_03==6097 | P024_03==6098 | P024_03==6099 | P024_03==6100 | P024_03==6101 | 
+  P024_03==6102 | P024_03==6103 | P024_03==6121 | P024_03==6190 | P024_03==6216 | 
+  P024_03==6312 | P024_03==6313 | P024_03==6378 | P024_03==6405 | P024_03==6419 | 
+  P024_03==6420 | P024_03==6421 | P024_03==6422 | P024_03==6423 | P024_03==6424 | 
+  P024_03==6470 | P024_03==6517 | P024_03==6539 | P024_03==6660 | P024_03==6991 | 
+  P024_03==6992 | P024_03==7192 | P024_03==6650 | P024_03==6969 | P024_03==8384 ))
+```
+
+
+```{r}
+#lalibertad
+setwd("C:/Users/sant_/Documents/Consultorias/2019/nico/cenagro")
+library(dplyr)
+library(foreign)
+
+##Bases generales
+lalibertad_rec02 <- read.dbf("lalibertad/349-Modulo231/03_IVCENAGRO_REC02.dbf") 
+lalibertad_rec04a <- read.dbf("lalibertad/349-Modulo236/08_IVCENAGRO_REC04A.dbf") 
+
+## Pollos
+lalibertad_pollos <- filter(lalibertad_rec04a, P067_01==761)
+
+## Ganado lechero (solo vacas)
+lalibertad_vacas <- filter(lalibertad_rec04a, P067_01==674)
+
+## Papas
+lalibertad_papas <- filter(lalibertad_rec02, (
+  P024_03==2610 | P024_03==2611 | P024_03==2612 | P024_03==2613 | P024_03==2614 | 
+    P024_03==2615 | P024_03==5049 | P024_03==5062 | P024_03==5074 | P024_03==5075 | 
+    P024_03==5076 | P024_03==5077 | P024_03==5078 | P024_03==5079 | P024_03==5080 | 
+    P024_03==5081 | P024_03==5090 | P024_03==5091 | P024_03==5113 | P024_03==5122 | 
+    P024_03==5123 | P024_03==5124 | P024_03==5125 | P024_03==5126 | P024_03==5130 | 
+    P024_03==5135 | P024_03==5136 | P024_03==5137 | P024_03==5142 | P024_03==5145 | 
+    P024_03==5146 | P024_03==5155 | P024_03==5157 | P024_03==5159 | P024_03==5160 | 
+    P024_03==5170 | P024_03==5183 | P024_03==5184 | P024_03==5185 | P024_03==5213 | 
+    P024_03==5214 | P024_03==5231 | P024_03==5304 | P024_03==5344 | P024_03==5345 | 
+    P024_03==5346 | P024_03==5347 | P024_03==5395 | P024_03==5399 | P024_03==5406 | 
+    P024_03==5412 | P024_03==5436 | P024_03==5440 | P024_03==5441 | P024_03==5442 | 
+    P024_03==5458 | P024_03==5496 | P024_03==5512 | P024_03==5554 | P024_03==5586 | 
+    P024_03==5651 | P024_03==5658 | P024_03==5689 | P024_03==5733 | P024_03==5819 | 
+    P024_03==5942 | P024_03==5952 | P024_03==6099 | P024_03==6147 | P024_03==6148 | 
+    P024_03==6149 | P024_03==6482 | P024_03==6811 | P024_03==6898 | P024_03==6940 | 
+    P024_03==7125 | P024_03==7126 | P024_03==7127 | P024_03==7219 | P024_03==8000 | 
+    P024_03==8001 | P024_03==8002 | P024_03==8017 | P024_03==8074 | P024_03==8086 | 
+    P024_03==8163 | P024_03==8194 | P024_03==8207 | P024_03==8217 | P024_03==8218 | 
+    P024_03==8219 | P024_03==8233 | P024_03==8253 | P024_03==8275 | P024_03==8276 | 
+    P024_03==8286 | P024_03==8287 | P024_03==8320 | P024_03==8404 | P024_03==8408 ))
+
+## Naranjas y mandarinas
+lalibertad_narmand <- filter(lalibertad_rec02, (
+  P024_03==1146 | P024_03==5533 | P024_03==5568 | P024_03==5593 | P024_03==5611 | 
+  P024_03==5641 | P024_03==5751 | P024_03==5754 | P024_03==5762 | P024_03==5765 | 
+  P024_03==5810 | P024_03==5929 | P024_03==5931 | P024_03==6004 | P024_03==6045 | 
+  P024_03==6066 | P024_03==6087 | P024_03==6088 | P024_03==6089 | P024_03==6096 | 
+  P024_03==6097 | P024_03==6098 | P024_03==6099 | P024_03==6100 | P024_03==6101 | 
+  P024_03==6102 | P024_03==6103 | P024_03==6121 | P024_03==6190 | P024_03==6216 | 
+  P024_03==6312 | P024_03==6313 | P024_03==6378 | P024_03==6405 | P024_03==6419 | 
+  P024_03==6420 | P024_03==6421 | P024_03==6422 | P024_03==6423 | P024_03==6424 | 
+  P024_03==6470 | P024_03==6517 | P024_03==6539 | P024_03==6660 | P024_03==6991 | 
+  P024_03==6992 | P024_03==7192 | P024_03==6650 | P024_03==6969 | P024_03==8384 ))
+```
+
+## Reporte general: Nro. de productores por departamento y producto
+```{r}
+#Reportes generales
+Nro_productores=cbind(c(nrow(cajamarca_vacas),nrow(lalibertad_vacas),nrow(lima_vacas),nrow(ancash_vacas),nrow(ica_vacas),nrow(junin_vacas)),
+                      c(nrow(cajamarca_papas),nrow(lalibertad_papas),nrow(lima_papas),nrow(ancash_papas),nrow(ica_papas),nrow(junin_papas)),
+                      c(nrow(cajamarca_narmand),nrow(lalibertad_narmand),nrow(lima_narmand),nrow(ancash_narmand),nrow(ica_narmand),nrow(junin_narmand)),
+                      c(nrow(cajamarca_pollos),nrow(lalibertad_pollos),nrow(lima_pollos),nrow(ancash_pollos),nrow(ica_pollos),nrow(junin_pollos)))
+rownames(Nro_productores) <- c("Cajamarca","La Libertad","Lima","Ancash","Ica","Junín")
+colnames(Nro_productores) <- c("Ganado lechero","Papas","Cítricos","Pollos")
+Nro_productores
+```
+
+## Estadísticas de producción agropecuaria por distrito
+
+### lalibertad
+
+#### Ganado lechero
+```{r}
+lalibertad_vacas <- mutate(lalibertad_vacas, ubigeo=paste(lalibertad_vacas$P001,lalibertad_vacas$P002,lalibertad_vacas$P003))
+Tlalibertad_vacas <- group_by(lalibertad_vacas, ubigeo)
+vacas <- data.frame(summarize(Tlalibertad_vacas, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+vacas
+```
+
+
+#### Papas
+```{r}
+lalibertad_papas <- mutate(lalibertad_papas, ubigeo=paste(lalibertad_papas$P001,lalibertad_papas$P002,lalibertad_papas$P003))
+Tlalibertad_papas <- group_by(lalibertad_papas, ubigeo)
+papas <- data.frame(summarize(Tlalibertad_papas, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+papas
+```
+
+
+
+#### Cítricos
+```{r}
+lalibertad_narmand <- mutate(lalibertad_narmand, ubigeo=paste(lalibertad_narmand$P001,lalibertad_narmand$P002,lalibertad_narmand$P003))
+Tlalibertad_narmand <- group_by(lalibertad_narmand, ubigeo)
+citricos <- data.frame(summarize(Tlalibertad_narmand, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+citricos
+```
+
+
+#### Pollos
+```{r}
+lalibertad_pollos <- mutate(lalibertad_pollos, ubigeo=paste(lalibertad_pollos$P001,lalibertad_pollos$P002,lalibertad_pollos$P003))
+Tlalibertad_pollos <- group_by(lalibertad_pollos, ubigeo)
+pollos <- data.frame(summarize(Tlalibertad_pollos, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+pollos
+```
+
+
+### cajamarca
+
+#### Ganado lechero
+```{r}
+cajamarca_vacas <- mutate(cajamarca_vacas, ubigeo=paste(cajamarca_vacas$P001,cajamarca_vacas$P002,cajamarca_vacas$P003))
+Tcajamarca_vacas <- group_by(cajamarca_vacas, ubigeo)
+vacas <- data.frame(summarize(Tcajamarca_vacas, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+vacas
+```
+
+
+#### Papas
+```{r}
+cajamarca_papas <- mutate(cajamarca_papas, ubigeo=paste(cajamarca_papas$P001,cajamarca_papas$P002,cajamarca_papas$P003))
+Tcajamarca_papas <- group_by(cajamarca_papas, ubigeo)
+papas <- data.frame(summarize(Tcajamarca_papas, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+papas
+```
+
+
+
+#### Cítricos
+```{r}
+cajamarca_narmand <- mutate(cajamarca_narmand, ubigeo=paste(cajamarca_narmand$P001,cajamarca_narmand$P002,cajamarca_narmand$P003))
+Tcajamarca_narmand <- group_by(cajamarca_narmand, ubigeo)
+citricos <- data.frame(summarize(Tcajamarca_narmand, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+citricos
+```
+
+
+#### Pollos
+```{r}
+cajamarca_pollos <- mutate(cajamarca_pollos, ubigeo=paste(cajamarca_pollos$P001,cajamarca_pollos$P002,cajamarca_pollos$P003))
+Tcajamarca_pollos <- group_by(cajamarca_pollos, ubigeo)
+pollos <- data.frame(summarize(Tcajamarca_pollos, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+pollos
+```
+
+
+
+### lima
+
+#### Ganado lechero
+```{r}
+lima_vacas <- mutate(lima_vacas, ubigeo=paste(lima_vacas$P001,lima_vacas$P002,lima_vacas$P003))
+Tlima_vacas <- group_by(lima_vacas, ubigeo)
+vacas <- data.frame(summarize(Tlima_vacas, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+vacas
+```
+
+
+#### Papas
+```{r}
+lima_papas <- mutate(lima_papas, ubigeo=paste(lima_papas$P001,lima_papas$P002,lima_papas$P003))
+Tlima_papas <- group_by(lima_papas, ubigeo)
+papas <- data.frame(summarize(Tlima_papas, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+papas
+```
+
+
+
+#### Cítricos
+```{r}
+lima_narmand <- mutate(lima_narmand, ubigeo=paste(lima_narmand$P001,lima_narmand$P002,lima_narmand$P003))
+Tlima_narmand <- group_by(lima_narmand, ubigeo)
+citricos <- data.frame(summarize(Tlima_narmand, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+citricos
+```
+
+
+#### Pollos
+```{r}
+lima_pollos <- mutate(lima_pollos, ubigeo=paste(lima_pollos$P001,lima_pollos$P002,lima_pollos$P003))
+Tlima_pollos <- group_by(lima_pollos, ubigeo)
+pollos <- data.frame(summarize(Tlima_pollos, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+pollos
+```
+
+
+### ancash
+
+#### Ganado lechero
+```{r}
+ancash_vacas <- mutate(ancash_vacas, ubigeo=paste(ancash_vacas$P001,ancash_vacas$P002,ancash_vacas$P003))
+Tancash_vacas <- group_by(ancash_vacas, ubigeo)
+vacas <- data.frame(summarize(Tancash_vacas, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+vacas
+```
+
+
+#### Papas
+```{r}
+ancash_papas <- mutate(ancash_papas, ubigeo=paste(ancash_papas$P001,ancash_papas$P002,ancash_papas$P003))
+Tancash_papas <- group_by(ancash_papas, ubigeo)
+papas <- data.frame(summarize(Tancash_papas, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+papas
+```
+
+
+
+#### Cítricos
+```{r}
+ancash_narmand <- mutate(ancash_narmand, ubigeo=paste(ancash_narmand$P001,ancash_narmand$P002,ancash_narmand$P003))
+Tancash_narmand <- group_by(ancash_narmand, ubigeo)
+citricos <- data.frame(summarize(Tancash_narmand, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+citricos
+```
+
+
+#### Pollos
+```{r}
+ancash_pollos <- mutate(ancash_pollos, ubigeo=paste(ancash_pollos$P001,ancash_pollos$P002,ancash_pollos$P003))
+Tancash_pollos <- group_by(ancash_pollos, ubigeo)
+pollos <- data.frame(summarize(Tancash_pollos, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+pollos
+```
+
+
+### ica
+
+#### Ganado lechero
+```{r}
+ica_vacas <- mutate(ica_vacas, ubigeo=paste(ica_vacas$P001,ica_vacas$P002,ica_vacas$P003))
+Tica_vacas <- group_by(ica_vacas, ubigeo)
+vacas <- data.frame(summarize(Tica_vacas, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+vacas
+```
+
+
+#### Papas
+```{r}
+ica_papas <- mutate(ica_papas, ubigeo=paste(ica_papas$P001,ica_papas$P002,ica_papas$P003))
+Tica_papas <- group_by(ica_papas, ubigeo)
+papas <- data.frame(summarize(Tica_papas, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+papas
+```
+
+
+
+#### Cítricos
+```{r}
+ica_narmand <- mutate(ica_narmand, ubigeo=paste(ica_narmand$P001,ica_narmand$P002,ica_narmand$P003))
+Tica_narmand <- group_by(ica_narmand, ubigeo)
+citricos <- data.frame(summarize(Tica_narmand, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+citricos
+```
+
+
+#### Pollos
+```{r}
+ica_pollos <- mutate(ica_pollos, ubigeo=paste(ica_pollos$P001,ica_pollos$P002,ica_pollos$P003))
+Tica_pollos <- group_by(ica_pollos, ubigeo)
+pollos <- data.frame(summarize(Tica_pollos, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+pollos
+```
+
+### junin
+
+#### Ganado lechero
+```{r}
+junin_vacas <- mutate(junin_vacas, ubigeo=paste(junin_vacas$P001,junin_vacas$P002,junin_vacas$P003))
+Tjunin_vacas <- group_by(junin_vacas, ubigeo)
+vacas <- data.frame(summarize(Tjunin_vacas, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+vacas
+```
+
+
+#### Papas
+```{r}
+junin_papas <- mutate(junin_papas, ubigeo=paste(junin_papas$P001,junin_papas$P002,junin_papas$P003))
+Tjunin_papas <- group_by(junin_papas, ubigeo)
+papas <- data.frame(summarize(Tjunin_papas, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+papas
+```
+
+
+
+#### Cítricos
+```{r}
+junin_narmand <- mutate(junin_narmand, ubigeo=paste(junin_narmand$P001,junin_narmand$P002,junin_narmand$P003))
+Tjunin_narmand <- group_by(junin_narmand, ubigeo)
+citricos <- data.frame(summarize(Tjunin_narmand, SuperficieTotal= sum(P025), 
+          Media=mean(P025), 
+          Minimo=min(P025), 
+          Maximo=max(P025)))
+citricos
+```
+
+
+#### Pollos
+```{r}
+junin_pollos <- mutate(junin_pollos, ubigeo=paste(junin_pollos$P001,junin_pollos$P002,junin_pollos$P003))
+Tjunin_pollos <- group_by(junin_pollos, ubigeo)
+pollos <- data.frame(summarize(Tjunin_pollos, SuperficieTotal= sum(P067_03), 
+          Media=mean(P067_03), 
+          Minimo=min(P067_03), 
+          Maximo=max(P067_03)))
+pollos
+```
+
+```{r}
+#Lima
+df_lima_vacas <-data.frame(table(Tlima_vacas$ubigeo))
+colnames(df_lima_vacas) <- c("Ubigeo","Freq")
+df_lima_papas <-data.frame(table(Tlima_papas$ubigeo))
+colnames(df_lima_papas) <- c("Ubigeo","Freq")
+df_lima_narmand <-data.frame(table(Tlima_narmand$ubigeo))
+colnames(df_lima_narmand) <- c("Ubigeo","Freq")
+df_lima_pollos <-data.frame(table(Tlima_pollos$ubigeo))
+colnames(df_lima_pollos) <- c("Ubigeo","Freq")
+a1<-merge.data.frame(df_lima_vacas,df_lima_papas,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+a2<-merge.data.frame(df_lima_narmand,df_lima_pollos,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+lima<-merge.data.frame(a1,a2,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+```
+
+```{r}
+#cajamarca
+df_cajamarca_vacas <-data.frame(table(Tcajamarca_vacas$ubigeo))
+colnames(df_cajamarca_vacas) <- c("Ubigeo","Freq")
+df_cajamarca_papas <-data.frame(table(Tcajamarca_papas$ubigeo))
+colnames(df_cajamarca_papas) <- c("Ubigeo","Freq")
+df_cajamarca_narmand <-data.frame(table(Tcajamarca_narmand$ubigeo))
+colnames(df_cajamarca_narmand) <- c("Ubigeo","Freq")
+df_cajamarca_pollos <-data.frame(table(Tcajamarca_pollos$ubigeo))
+colnames(df_cajamarca_pollos) <- c("Ubigeo","Freq")
+a1<-merge.data.frame(df_cajamarca_vacas,df_cajamarca_papas,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+a2<-merge.data.frame(df_cajamarca_narmand,df_cajamarca_pollos,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+cajamarca<-merge.data.frame(a1,a2,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+
+```
+
+```{r}
+#lalibertad
+df_lalibertad_vacas <-data.frame(table(Tlalibertad_vacas$ubigeo))
+colnames(df_lalibertad_vacas) <- c("Ubigeo","Freq")
+df_lalibertad_papas <-data.frame(table(Tlalibertad_papas$ubigeo))
+colnames(df_lalibertad_papas) <- c("Ubigeo","Freq")
+df_lalibertad_narmand <-data.frame(table(Tlalibertad_narmand$ubigeo))
+colnames(df_lalibertad_narmand) <- c("Ubigeo","Freq")
+df_lalibertad_pollos <-data.frame(table(Tlalibertad_pollos$ubigeo))
+colnames(df_lalibertad_pollos) <- c("Ubigeo","Freq")
+a1<-merge.data.frame(df_lalibertad_vacas,df_lalibertad_papas,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+a2<-merge.data.frame(df_lalibertad_narmand,df_lalibertad_pollos,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+lalibertad<-merge.data.frame(a1,a2,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+
+```
+
+```{r}
+#ancash
+df_ancash_vacas <-data.frame(table(Tancash_vacas$ubigeo))
+colnames(df_ancash_vacas) <- c("Ubigeo","Freq")
+df_ancash_papas <-data.frame(table(Tancash_papas$ubigeo))
+colnames(df_ancash_papas) <- c("Ubigeo","Freq")
+df_ancash_narmand <-data.frame(table(Tancash_narmand$ubigeo))
+colnames(df_ancash_narmand) <- c("Ubigeo","Freq")
+df_ancash_pollos <-data.frame(table(Tancash_pollos$ubigeo))
+colnames(df_ancash_pollos) <- c("Ubigeo","Freq")
+a1<-merge.data.frame(df_ancash_vacas,df_ancash_papas,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+a2<-merge.data.frame(df_ancash_narmand,df_ancash_pollos,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+ancash<-merge.data.frame(a1,a2,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+
+```
+
+```{r}
+#ica
+df_ica_vacas <-data.frame(table(Tica_vacas$ubigeo))
+colnames(df_ica_vacas) <- c("Ubigeo","Freq")
+df_ica_papas <-data.frame(table(Tica_papas$ubigeo))
+colnames(df_ica_papas) <- c("Ubigeo","Freq")
+df_ica_narmand <-data.frame(table(Tica_narmand$ubigeo))
+colnames(df_ica_narmand) <- c("Ubigeo","Freq")
+df_ica_pollos <-data.frame(table(Tica_pollos$ubigeo))
+colnames(df_ica_pollos) <- c("Ubigeo","Freq")
+a1<-merge.data.frame(df_ica_vacas,df_ica_papas,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+a2<-merge.data.frame(df_ica_narmand,df_ica_pollos,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+ica<-merge.data.frame(a1,a2,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+
+```
+
+```{r}
+#junin
+df_junin_vacas <-data.frame(table(Tjunin_vacas$ubigeo))
+colnames(df_junin_vacas) <- c("Ubigeo","Freq")
+df_junin_papas <-data.frame(table(Tjunin_papas$ubigeo))
+colnames(df_junin_papas) <- c("Ubigeo","Freq")
+df_junin_narmand <-data.frame(table(Tjunin_narmand$ubigeo))
+colnames(df_junin_narmand) <- c("Ubigeo","Freq")
+df_junin_pollos <-data.frame(table(Tjunin_pollos$ubigeo))
+colnames(df_junin_pollos) <- c("Ubigeo","Freq")
+a1<-merge.data.frame(df_junin_vacas,df_junin_papas,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+a2<-merge.data.frame(df_junin_narmand,df_junin_pollos,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+junin<-merge.data.frame(a1,a2,by.x="Ubigeo",by.y="Ubigeo",all=TRUE)
+
+```
+
+
+## Reportes de bases de datos de nro.de productores por distrito
+```{r}
+#Bases de datos por distritos
+library(DT)
+datatable(cajamarca, colnames = c("Ubigeo","Ganado lechero","Papa","Cítricos","Pollos"), extensions = 'Buttons', options = list(pageLength = 25, dom='Bfrtip', buttons=c('copy','csv','pdf')), filter = 'top', caption = "Nro. productores por distrito, cajamarca")
+```
+
+```{r}
+library(DT)
+datatable(lalibertad, colnames = c("Ubigeo","Ganado lechero","Papa","Cítricos","Pollos"), extensions = 'Buttons', options = list(pageLength = 25, dom='Bfrtip', buttons=c('copy','csv','pdf')), filter = 'top', caption = "Nro. productores por distrito, lalibertad")
+```
+
+```{r}
+library(DT)
+datatable(lima, colnames = c("Ubigeo","Ganado lechero","Papa","Cítricos","Pollos"), extensions = 'Buttons', options = list(pageLength = 25, dom='Bfrtip', buttons=c('copy','csv','pdf')), filter = 'top', caption = "Nro. productores por distrito, Lima")
+```
+
+```{r}
+library(DT)
+datatable(ancash, colnames = c("Ubigeo","Ganado lechero","Papa","Cítricos","Pollos"), extensions = 'Buttons', options = list(pageLength = 25, dom='Bfrtip', buttons=c('copy','csv','pdf')), filter = 'top', caption = "Nro. productores por distrito, ancash")
+```
+
+```{r}
+library(DT)
+datatable(ica, colnames = c("Ubigeo","Ganado lechero","Papa","Cítricos","Pollos"), extensions = 'Buttons', options = list(pageLength = 25, dom='Bfrtip', buttons=c('copy','csv','pdf')), filter = 'top', caption = "Nro. productores por distrito, ica")
+```
+
+```{r}
+library(DT)
+datatable(junin, colnames = c("Ubigeo","Ganado lechero","Papa","Cítricos","Pollos"), extensions = 'Buttons', options = list(pageLength = 25, dom='Bfrtip', buttons=c('copy','csv','pdf')), filter = 'top', caption = "Nro. productores por distrito, junin")
+```
+
+
+## Determinación de la muestra
+
+### Se verifican la participación de productores por departamento.
+El criterio consistirá en la participación de unidades agropecuarias. La tabla a continuación muestra los resultados.
+
+```{r}
+#Reportes generales
+prop.table(Nro_productores, 2)
+
+```
+
+Con dicha participación, definimos la distribución del tamaño de muestra entre departamentos con cada producto. Considerar escenarios.
+
+## Escenario 1
+Tomar una muestra de 145 ccpp por cada producto
+```{r}
+round(prop.table(Nro_productores, 2)*145)
+```
+
+## Escenario 2
+Tomar la muestra de 145 ccpp y dividirlo en partes iguales para cada producto
+```{r}
+round(prop.table(Nro_productores, 2)*(145/4))
+```
+
+## Escenario 3
+Tomar la muestra de 145 ccpp y dividirla en partes proporcionales para cada producto
+```{r}
+colSums(Nro_productores)
+colSums(Nro_productores)/sum(colSums(Nro_productores))*100
+```
+
+Con ello, la muestra final para cada producto en el escenario 3 sería:
+```{r}
+part <- round(145*colSums(Nro_productores)/sum(colSums(Nro_productores)))
+part
+```
+
+
+```{r}
+a <- prop.table(Nro_productores,2)
+print("Muestra Ganado lechero")
+cbind(round(a[,1]*part[1]))
+
+print("Muestra Papas")
+cbind(round(a[,2]*part[2]))
+
+print("Muestra Cítricos")
+cbind(round(a[,3]*part[3]))
+
+print("Muestra Pollos")
+cbind(round(a[,4]*part[4]))
+```
+
